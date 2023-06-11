@@ -1,0 +1,18 @@
+
+User Creation request:
+
+{
+"user":"User1",
+"keywords": ["Java", "Spring", "JavaScript"]
+}
+
+
+{
+"user":"User2",
+"keywords": ["Java", "Mongodb", "REST"]
+}
+
+{
+"user":"User3",
+"keywords": ["Java", "NoSql", "Notes"]
+}
