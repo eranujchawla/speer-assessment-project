@@ -25,7 +25,4 @@ public class Note {
 	private String user;
 	private String[] keywords;
 	
-//	public Note() {
-//		this.id = UUID.randomUUID().toString();
-//	}
 }

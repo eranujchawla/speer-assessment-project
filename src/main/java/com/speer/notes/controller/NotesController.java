@@ -19,7 +19,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.speer.notes.model.AuthenticationRequest;
 import com.speer.notes.model.Note;
+import com.speer.notes.service.CustomUserDetailsService;
 import com.speer.notes.service.NotesService;
 
 /**
@@ -31,100 +33,117 @@ import com.speer.notes.service.NotesService;
 public class NotesController {
 
 	@Autowired
-	private NotesService service;
+	private NotesService notesService;
 
-	//	1. GET /api/notes: get a list of all notes for the authenticated user.
+	@Autowired
+	private CustomUserDetailsService userService;
+
+	// 1. GET /api/notes: get a list of all notes for the authenticated user.
 	@GetMapping
-	public ResponseEntity<List<Note>> readAll() {
+	public ResponseEntity<List<Note>> readAll(@RequestBody AuthenticationRequest user) {
 		try {
-			List<Note> list = service.getall();
-//			System.out.println("no of records : " + list.size());
+			userService.validateCorrectUser(user.getName());
+		} catch (Exception exception) {
+			return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+		}
+		try {
+			List<Note> list = notesService.getall(user.getName());
 			return new ResponseEntity<>(list, HttpStatus.OK);
 		} catch (Exception e) {
-			System.out.println("Read failed");
+			return new ResponseEntity<>(HttpStatus.NO_CONTENT);
 		}
-		return new ResponseEntity<>(HttpStatus.EXPECTATION_FAILED);
 	}
 
-	//	2. GET /api/notes/:id: get a note by ID for the authenticated user.
+	// 2. GET /api/notes/:id: get a note by ID for the authenticated user.
 	@GetMapping("/{id}")
-	public ResponseEntity<Note> read(@PathVariable String id) {
-		Optional<Note> note = service.getNoteById(id);
-		if(note.isPresent()) {
+	public ResponseEntity<Note> read(@PathVariable String id, @RequestBody AuthenticationRequest user) {
+		try {
+			userService.validateCorrectUser(user.getName());
+		} catch (Exception exception) {
+			return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+		}
+		Optional<Note> note = notesService.getNoteById(user.getName(), id);
+		if (note.isPresent()) {
+			return new ResponseEntity<>(note.get(), HttpStatus.FOUND);
+		}
+		return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+	}
+
+	// 3. POST /api/notes: create a new note for the authenticated user.
+	@PostMapping
+	public ResponseEntity<Note> create(@RequestBody Note note) {
+		if (note == null || note.getKeywords() == null || note.getUser() == null) {
+			return ResponseEntity.badRequest().build();
+		}
+		try {
+			userService.validateCorrectUser(note.getUser());
+		} catch (Exception exception) {
+			return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+		}
+		try {
+			Note newNote = notesService.saveNote(note);
+			return new ResponseEntity<Note>(newNote, HttpStatus.CREATED);
+		} catch (Exception e) {
+			return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+		}
+	}
+
+	// 4. PUT /api/notes/:id: update an existing note by ID for the authenticated
+	// user.
+	@PutMapping("/{id}")
+	public ResponseEntity<Note> update(@PathVariable("id") String id, @RequestBody Note note) {
+		try {
+			userService.validateCorrectUser(note.getUser());
+		} catch (Exception exception) {
+			return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+		}
+		try {
+			note.setId(id);
+			Note updatedNote = notesService.updateNote(note);
+			return new ResponseEntity<>(updatedNote, HttpStatus.ACCEPTED);
+		} catch (Exception e) {
+			return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+		}
+	}
+
+	// 5. DELETE /api/notes/:id: delete a note by ID for the authenticated user.
+	@DeleteMapping("/{id}")
+	public ResponseEntity<Note> remove(@PathVariable("id") String id, @RequestBody AuthenticationRequest user) {
+		try {
+			userService.validateCorrectUser(user.getName());
+		} catch (Exception exception) {
+			return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+		}
+		try {
+			notesService.deleteNote(id);
+			return new ResponseEntity<>(HttpStatus.OK);
+		} catch (Exception e) {
+			return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+		}
+	}
+
+	// 6. POST /api/notes/:id/share: share a note with another user for the
+	// authenticated user.
+	@PostMapping("/{id}/share")
+	public ResponseEntity<Note> share(@PathVariable("id") String id, @RequestBody AuthenticationRequest user) {
+		Optional<Note> note = notesService.getNoteById(id);
+		if (note.isPresent()) {
 			return ResponseEntity.ok(note.get());
 		}
 		return new ResponseEntity<>(HttpStatus.NOT_FOUND);
 	}
 
-	//	3. POST /api/notes: create a new note for the authenticated user.
-	@PostMapping
-	public <T> ResponseEntity<T> create(@RequestBody Note note) {
-		if(note == null || note.getKeywords() == null || note.getUser() == null ) {
-			return ResponseEntity.badRequest().build();
-		}
-		try {
-			Note newNote = service.saveNote(note);
-			return ResponseEntity.accepted().body(newNote).accepted().build();
-		} catch (Exception e) {
-			System.out.println("Creation failed");
-		}
-		return new ResponseEntity<>(HttpStatus.EXPECTATION_FAILED);
-	}
-
-
-	//	4. PUT /api/notes/:id: update an existing note by ID for the authenticated user.
-	@PutMapping("/{id}")
-    public ResponseEntity<Note> update(
-            @PathVariable("id") String id,
-            @RequestBody Note note) {
-        try {
-        	note.setId(id);
-        	Note updatedNote = service.updateNote(note);
-			return new ResponseEntity<>(updatedNote, HttpStatus.ACCEPTED);
-		} catch (Exception e) {
-			System.out.println("Update failed");
-		}
-		return new ResponseEntity<>(HttpStatus.EXPECTATION_FAILED);
-    }
-
-	//	5. DELETE /api/notes/:id: delete a note by ID for the authenticated user.
-	@DeleteMapping("/{id}")
-    public ResponseEntity<Note> remove(
-            @PathVariable("id") String id) {
-        try {
-        	service.deleteNote(id);
-			return new ResponseEntity<>(HttpStatus.OK);
-		} catch (Exception e) {
-			System.out.println("Deletion failed");
-		}
-		return new ResponseEntity<>(HttpStatus.EXPECTATION_FAILED);
-    }
-	
-	//	6. POST /api/notes/:id/share: share a note with another user for the authenticated user.
-	@PostMapping("/{id}/share")
-    public ResponseEntity<Note> share(
-            @PathVariable("id") Integer id,
-            @RequestBody Note note) {
-        try {
-        	Note updatedNote = service.updateNote(note);
-			return new ResponseEntity<>(updatedNote, HttpStatus.ACCEPTED);
-		} catch (Exception e) {
-			System.out.println("Update failed");
-		}
-		return new ResponseEntity<>(HttpStatus.EXPECTATION_FAILED);
-    }
-	
-	//	7. GET /api/search?q=:query: search for notes based on keywords for the authenticated user.
+	// 7. GET /api/search?q=:query: search for notes based on keywords for the
+	// authenticated user.
 	@GetMapping("/search")
 	public ResponseEntity<List<Note>> search(@RequestParam(name = "q") String query) {
 		try {
 			System.out.println("keyword passed : " + query);
-			List<Note> list = service.searchByKeyword(query);
+			List<Note> list = notesService.searchByKeyword(query);
 			System.out.println("no of records : " + list.size());
 			return new ResponseEntity<>(list, HttpStatus.OK);
 		} catch (Exception e) {
-			System.out.println("Read failed");
+			return new ResponseEntity<>(HttpStatus.NO_CONTENT);
 		}
-		return new ResponseEntity<>(HttpStatus.EXPECTATION_FAILED);
 	}
 }

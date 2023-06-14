@@ -18,7 +18,7 @@ import com.speer.notes.repo.NotesRepo;
  */
 @Service
 public class NotesService {
-
+	
 	@Autowired
 	private NotesRepo repo;
 	
@@ -27,8 +27,8 @@ public class NotesService {
 	 * 
 	 * @return
 	 */
-	public List<Note> getall() {
-		return repo.findAll();
+	public List<Note> getall(String name) {
+		return repo.findByUser(name);
 	}
 
 	/**
@@ -39,6 +39,17 @@ public class NotesService {
 	 */
 	public Optional<Note> getNoteById(String id) {
 		return repo.findById(id);
+	}
+	
+	/**
+	 * Return Note by id and name
+	 * 
+	 * @param name
+	 * @param id
+	 * @return
+	 */
+	public Optional<Note> getNoteById(String user, String id) {
+		return repo.findByUserAndId(user, id);
 	}
 	
 	/**
