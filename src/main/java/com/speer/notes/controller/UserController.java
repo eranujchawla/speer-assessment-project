@@ -30,7 +30,7 @@ import com.speer.notes.service.JwtService;
  */
 
 @RestController
-@RequestMapping("/user")
+@RequestMapping("/api/auth")
 public class UserController {
 
 	@Autowired
@@ -47,7 +47,7 @@ public class UserController {
 		return "Hello, " + principal.getName() + " !! : \"";
 	}
 
-	@PostMapping(path = "/authenticate")
+	@PostMapping(path = "/login")
 	public ResponseEntity<AuthenticationResponse> authenticate(@RequestBody AuthenticationRequest authenticationRequest)
 			throws Exception {
 		try {
@@ -68,7 +68,7 @@ public class UserController {
 
 	}
 
-	@PostMapping(path = "/create")
+	@PostMapping(path = "/signup")
 	public ResponseEntity<UserDetails> create(@RequestBody AuthenticationRequest authenticationRequest)
 			throws Exception {
 		try {
